@@ -631,3 +631,10 @@
 .main > * {
   flex-shrink: 0;
 }
+.mut-line .seg,
+.mut-line .check {
+  flex: none;
+}
+.mut-line .input {
+  flex: 1;
+}

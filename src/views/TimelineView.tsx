@@ -71,13 +71,37 @@ function bucketLabel(t: number, unit: Unit) {
   return `Week of ${d.toISOString().slice(0, 10)}`;
 }
 
+/**
+ * Which filter a brushed period turns into. Loculus stores sampleCollectionDate as a free
+ * string, so it's filtered through its derived lower/upper range fields; release/submission
+ * date strings map to their timestamp twins.
+ */
+function brushTargets(instance: Instance, field: string): { field: string; side: 'both' | 'from' | 'to' }[] | null {
+  const has = (f: string) => instance.catalog.has(f);
+  const def = instance.catalog.get(field);
+  if (field === 'sampleCollectionDate') {
+    if (has('sampleCollectionDateRangeLower') && has('sampleCollectionDateRangeUpper'))
+      return [
+        { field: 'sampleCollectionDateRangeLower', side: 'from' },
+        { field: 'sampleCollectionDateRangeUpper', side: 'to' },
+      ];
+    return null;
+  }
+  if (def?.type === 'date' || def?.type === 'timestamp') return [{ field, side: 'both' }];
+  const twin = { releasedDate: 'releasedAtTimestamp', submittedDate: 'submittedAtTimestamp' }[field];
+  if (twin && has(twin)) return [{ field: twin, side: 'both' }];
+  return null;
+}
+
+const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
+
 interface Bucket {
   t: number;
   byOrg: Record<string, number>;
   total: number;
 }
 
-export default function TimelineView({ instance, plans, focusOrganism }: ViewProps) {
+export default function TimelineView({ instance, plans, focusOrganism, addRangeFilter }: ViewProps) {
   const orgKeys = useMemo(() => plans.map((p) => p.organism.key), [plans]);
   const fields = useMemo(() => dateFields(instance, orgKeys), [instance, orgKeys]);
   const [field, setField] = useState<string>(fields[0]?.name ?? '');
@@ -197,6 +221,16 @@ export default function TimelineView({ instance, plans, focusOrganism }: ViewPro
   const visiblePlans = included.filter((p) => !hidden.has(p.organism.key));
   const def = instance.catalog.get(field);
   const precisionNote = coarse > 0 && UNIT_RANK[unit] > 0;
+  const targets = brushTargets(instance, field);
+  const onBrush = targets
+    ? (i: number, j: number) => {
+        const fromDay = isoDay(buckets[Math.min(i, j)].t);
+        const toDay = isoDay(nextBucket(buckets[Math.max(i, j)].t, unit) - 86400000);
+        for (const t of targets) {
+          addRangeFilter(t.field, t.side === 'to' ? undefined : fromDay, t.side === 'from' ? undefined : toDay);
+        }
+      }
+    : undefined;
 
   const toggle = (k: string) =>
     setHidden((h) => {
@@ -312,12 +346,18 @@ export default function TimelineView({ instance, plans, focusOrganism }: ViewPro
             form={form}
             cumulative={cumulative}
             setTip={setTip}
+            onBrush={onBrush}
           />
         )}
       </div>
 
       <div className="cv-note num">
         {[
+          onBrush
+            ? `Drag across the chart, or click a period, to filter on that date range${
+                field === 'sampleCollectionDate' ? ' (uses the collection-date lower/upper bounds)' : ''
+              }`
+            : `Range filtering is not available for ${def?.displayName ?? field}`,
           points.nulls > 0 && `${fmt(points.nulls)} records have no ${def?.displayName ?? field}`,
           precisionNote && `${fmt(coarse)} records have only ${unit === 'week' ? 'year or month' : 'year'} precision and are placed at the start of that period`,
           outside > 0 && (
@@ -355,6 +395,7 @@ function TimeChart({
   form,
   cumulative,
   setTip,
+  onBrush,
 }: {
   buckets: Bucket[];
   plans: OrganismPlan[];
@@ -362,9 +403,11 @@ function TimeChart({
   form: 'bars' | 'area';
   cumulative: boolean;
   setTip: (t: TipState | null) => void;
+  onBrush?: (fromIndex: number, toIndex: number) => void;
 }) {
   const [box, width] = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const [drag, setDrag] = useState<{ a: number; b: number } | null>(null);
 
   // Per-organism series, optionally accumulated.
   const series = useMemo(() => {
@@ -422,10 +465,35 @@ function TimeChart({
     return out;
   }, [buckets, iw, unit]);
 
-  const onMove = (e: React.PointerEvent<SVGRectElement>) => {
+  const indexAt = (e: React.PointerEvent<SVGRectElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    const i = Math.max(0, Math.min(buckets.length - 1, Math.floor(((e.clientX - r.left) / r.width) * buckets.length)));
+    return Math.max(0, Math.min(buckets.length - 1, Math.floor(((e.clientX - r.left) / r.width) * buckets.length)));
+  };
+  const onMove = (e: React.PointerEvent<SVGRectElement>) => {
+    const i = indexAt(e);
     setHover(i);
+    if (drag) {
+      if (drag.b !== i) setDrag({ a: drag.a, b: i });
+      const lo = Math.min(drag.a, i);
+      const hi = Math.max(drag.a, i);
+      setTip({
+        x: e.clientX,
+        y: e.clientY,
+        content: (
+          <>
+            <div className="tip-title">
+              {bucketLabel(buckets[lo].t, unit)}
+              {hi > lo ? ` – ${bucketLabel(buckets[hi].t, unit)}` : ''}
+            </div>
+            <TipRow
+              value={fmt(buckets.slice(lo, hi + 1).reduce((s, b) => s + plans.reduce((a, p) => a + (b.byOrg[p.organism.key] ?? 0), 0), 0))}
+              label="records · release to filter"
+            />
+          </>
+        ),
+      });
+      return;
+    }
     const vals = series[i];
     const b = buckets[i];
     setTip({
@@ -520,7 +588,16 @@ function TimeChart({
               </g>
             ))}
 
-            {hover !== null && form === 'area' && (
+            {drag && (
+              <rect
+                className="chart-brush"
+                x={Math.min(drag.a, drag.b) * band}
+                width={(Math.abs(drag.b - drag.a) + 1) * band}
+                y={0}
+                height={ih}
+              />
+            )}
+            {hover !== null && form === 'area' && !drag && (
               <line className="chart-cross" x1={xc(hover)} x2={xc(hover)} y1={0} y2={ih} />
             )}
             <rect
@@ -529,8 +606,29 @@ function TimeChart({
               y={0}
               width={iw}
               height={ih}
+              style={onBrush ? { cursor: 'col-resize' } : undefined}
+              onPointerDown={
+                onBrush
+                  ? (e) => {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      const i = indexAt(e);
+                      setDrag({ a: i, b: i });
+                    }
+                  : undefined
+              }
+              onPointerUp={
+                onBrush
+                  ? () => {
+                      if (drag) onBrush(drag.a, drag.b);
+                      setDrag(null);
+                      setTip(null);
+                    }
+                  : undefined
+              }
+              onPointerCancel={() => setDrag(null)}
               onPointerMove={onMove}
               onPointerLeave={() => {
+                if (drag) return;
                 setHover(null);
                 setTip(null);
               }}

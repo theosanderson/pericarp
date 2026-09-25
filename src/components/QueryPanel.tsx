@@ -51,10 +51,9 @@ export default function QueryPanel(props: {
       <Section
         title="Organisms"
         aside={
-          <div className="qsection-actions">
-            <button className="btn btn-ghost btn-sm" onClick={() => set({ organisms: [] })}>All</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => set({ organisms: [all[0]] })}>Clear</button>
-          </div>
+          q.organisms.length > 0 ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => set({ organisms: [] })}>Select all</button>
+          ) : null
         }
       >
         <ul className="org-list">
