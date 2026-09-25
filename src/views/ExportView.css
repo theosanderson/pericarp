@@ -1,0 +1,179 @@
+.exp {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.exp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.exp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.exp-head h2 {
+  font-size: var(--fs-lg);
+}
+.exp-head .muted {
+  font-size: var(--fs-sm);
+}
+.exp-dl td {
+  vertical-align: middle;
+}
+.exp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  white-space: normal !important;
+  max-width: none !important;
+}
+.exp-builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0;
+}
+@media (max-width: 760px) {
+  .exp-builder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.exp-fields {
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.exp-fields-head {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.exp-field-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.exp-field-list label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 12px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.exp-field-list label:hover {
+  background: var(--surface-2);
+}
+.exp-field-list input {
+  accent-color: var(--accent);
+}
+.exp-fname {
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.exp-cov {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+}
+.exp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.exp-selected {
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+  max-height: 90px;
+  overflow-y: auto;
+}
+.exp-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.exp-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs-sm);
+}
+.exp-progress li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.exp-progress li > span:last-child {
+  margin-left: auto;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.exp-ok {
+  color: var(--ok);
+}
+.exp-bad {
+  color: var(--bad);
+}
+.exp-recipe-org {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exp-recipe-org .select {
+  width: auto;
+  max-width: 100%;
+}
+.exp-recipes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 10px;
+}
+.exp-code {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  min-width: 0;
+}
+.exp-code-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.exp-code-head .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+}
+.exp-code pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  max-height: 320px;
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.exp-over {
+  border-color: var(--warn);
+  color: var(--warn);
+}
