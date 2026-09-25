@@ -28,7 +28,8 @@ export function escapeRegex(s: string) {
 }
 
 function literal(def: FieldDef, raw: string): string {
-  const v = raw.trim();
+  // String values are matched verbatim: stored values can carry leading/trailing whitespace.
+  const v = def.type === 'string' || def.type === 'authors' ? raw : raw.trim();
   switch (def.type) {
     case 'int':
     case 'float':
